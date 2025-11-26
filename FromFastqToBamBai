@@ -1,0 +1,36 @@
+#!/bin/bash
+#This program takes all .fastq files from the current directory and process them to output a .sam, .sorted.bam and .sorted.bam.bai && it creates a text file in a new directory called "mapping_logs" that stores the %mapped and %unmapped reads of the .fastq files. For this to work, the .ebwt files of the index genome must have the prefix "genome_index" and should all 6 be present in the directory where this program is being run.
+mkdir mapping_logs
+echo "Give file name"
+read stats
+> mapping_logs/$stats.txt
+> mapping_logs/temporal_bowtie_output.txt
+for f in *.fastq; do
+	base=$(basename "$f" .fastq)
+	#creates a variable with the name of the file without the extention to name all subsequent files created from this .fastq
+	
+	echo "Sample: $base" >> mapping_logs/$stats.txt
+	#wites the name of the file (without extension) to a new line in the .txt file
+	
+	bowtie -q -S genome_index "$f" > "${base}.sam" 2>> mapping_logs/temporal_bowtie_output.txt
+	# -q for .fastq files (change it to the corresponding option accordingly, check bowtie --h), this line writes the termianls output into a temporal .txt file for later grepping and creates a .sam file from the mapping
+	
+	result=$(grep '^#' mapping_logs/temporal_bowtie_output.txt)
+	#bowties terminal oputput gives a small summary of the results whit each line of the summary starting with a '#', this code exploits this to grep only those lines and peg them to the variable 'results'
+	
+	#echo "$result" #UNCOMMENT IF YOU WANT TO SEE THE MAPPING RESULTS ON TERMINAL IN REAL TIME
+	echo "$result" >> mapping_logs/$stats.txt
+	echo "------------------------------" >> mapping_logs/$stats.txt
+	#adds the summary and a separator to the .txt file for easy sample identification
+	
+	> mapping_logs/temporal_bowtie_output.txt
+	#clears the temporal .txt where the bowtie output is being stored so the new file in the for loop can write on it from cero
+	samtools view -bS "${base}.sam" | samtools sort -o "${base}.sorted.bam"
+	#takes the .bam that was just created with bowtie and creates its sorted.bam version
+	
+	samtools index "${base}.sorted.bam"
+	#creates the sorted.bam.bai version of the .bam file so it can be manipulated with something like umitools
+	
+	echo "file: $base done"
+	#feedbacks into the terminal to notify the user that the file has been processed
+done
