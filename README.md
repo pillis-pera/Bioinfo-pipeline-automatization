@@ -4,7 +4,7 @@ FILES
 - "FromFastqToBamBai.sh" is a script that contains just the alignment part of the full pipeline.
 - "Sample to Results.sh" is script that contains the full pipeline (from merging L1 & L2 FASTQs to creating the .csv with deduplicated counts).
 - "hsa_mature_DNA.fa" is the collection of mature Homo Sapiens miRNAs in FASTA using DNA annotation retrieved from miRBase.
-- "hsa_mature_index.*" these are index files for bowtie.
+
 
 
 CONSIDERATIONS
