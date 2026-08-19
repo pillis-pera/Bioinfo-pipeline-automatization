@@ -10,5 +10,7 @@ This file can be used to build the bowtie indexes using bowtie "bowtie-build hsa
 
 CONSIDERATIONS
 This pipeline process all FASTQ samples inside the directory, keeping their base name to generate all subsequent file types.
+
 Each step puts the output inside a new directory.
+
 Samples are processed one after the other (I'm working on parallel processing implementation using HPC).
