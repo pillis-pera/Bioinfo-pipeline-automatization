@@ -1,4 +1,4 @@
-This repo contains a bash script that lets you process raw reads obtained from an Illumina S2 cell NGS run prepared with a QIAGEN miRNA UMI containing library prep kit.
+This repo contains a bash script that lets you process raw reads obtained from an Illumina S2 cell NGS run prepared with a QIAGEN miRNA library prep kit with UMIs.
 
 FILES
 - "FromFastqToBamBai.sh" is a script that contains just the alignment part of the full pipeline.

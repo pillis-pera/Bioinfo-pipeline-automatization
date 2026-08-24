@@ -1,0 +1,42 @@
+#!/bin/bash
+#SBATCH -J miRNA_pipeline								                    #Job name
+#SBATCH -o /path/to/directory/miRNA_pipeline.o%j		                    #Output file name
+#SBATCH -e /path/to/directory/miRNA_pipeline.%N.%j.err	                    #Output error file
+#SBATCH --nodes=1								                            #Number of nodes
+#SBATCH --ntasks=1								                            #Number of tasks
+#SBATCH --cpus-per-task=1							                        #Number of cores available per task
+#SBATCH -p normal								                            #SLURM queue (partition)
+#SBATCH --array=1-3								                            #How many jobs in parallel
+#SBATCH -t 02:00:00								                            #run time (hh:mm:ss)
+
+echo $SLURM_JOB_ID
+echo $SLURM_JOB_NAME
+echo $SLURM_JOB_NUM_NODES
+
+BOWTIE="/path/to/micromamba/envs/umi_tools_env/bin/bowtie"
+SAMTOOLS="/path/to/micromamba/envs/umi_tools_env/bin/samtools"
+UMI_TOOLS="/path/to/micromamba/envs/umi_tools_env/bin/umi_tools"
+WORKING_DIRECTORY="/path/to/working/directory/"
+
+#File with all sample names must be created before hand
+SAMPLE="${WORKING_DIRECTORY}$(sed -n "${SLURM_ARRAY_TASK_ID}p" "${WORKING_DIRECTORY}samples.txt")" 
+
+BASE=$(basename "$SAMPLE" .fastq)
+PREFIX="${WORKING_DIRECTORY}${BASE}"
+
+#Bowtie reference must be created before hand using "bowtie-build <reference.fa> <index_reference_name>"
+REFERENCE="/path/to/directory_with_ebwt_files/index_reference_name"
+
+"$UMI_TOOLS" extract --extract-method=regex --bc-pattern='.+(?P<discard_1>AACTGTAGGCACCATCAAT){s<=2}(?P<umi_1>.{12})(?P<discard_2>.*)$' -I "${PREFIX}.fastq" -S "${PREFIX}_umiextracted.fastq"
+
+"$BOWTIE" -p 1 -q -S "${REFERENCE}" "${PREFIX}_umiextracted.fastq" > "${PREFIX}.sam"
+
+"$SAMTOOLS" view -bS "${PREFIX}.sam" | "$SAMTOOLS" sort -@ 1 -o "${PREFIX}.sorted.bam"
+
+"$SAMTOOLS" index "${PREFIX}.sorted.bam"
+
+"$UMI_TOOLS" dedup --method=unique --stdin="${PREFIX}.sorted.bam" --stdout="${PREFIX}.sorted.dedup.bam"
+
+"$SAMTOOLS" index "${PREFIX}.sorted.dedup.bam"
+
+(echo "Reference,Length,Mapped,Unmapped"; "$SAMTOOLS" idxstats "${PREFIX}.sorted.dedup.bam" | tr '\t' ',') > "${PREFIX}.dedup.idxstats.csv"
