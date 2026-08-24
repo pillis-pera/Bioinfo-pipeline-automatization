@@ -72,7 +72,7 @@ process UMI_DEDUP {
 
     script:
     """
-    umi_tools dedup --method=unique --stdin=${sorted_bam} --stdout="${sample}.sorted.dedup.bam"
+    umi_tools dedup --method=${task.ext.method} --stdin=${sorted_bam} --stdout="${sample}.sorted.dedup.bam"
 
     samtools index "${sample}.sorted.dedup.bam"
     """

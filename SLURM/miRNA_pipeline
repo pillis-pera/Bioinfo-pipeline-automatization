@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1								                            #Number of tasks
 #SBATCH --cpus-per-task=1							                        #Number of cores available per task
 #SBATCH -p normal								                            #SLURM queue (partition)
-#SBATCH --array=1-3								                            #How many jobs in parallel
+#SBATCH --array=1-3								                            #How many jobs in parallel (3 this time)
 #SBATCH -t 02:00:00								                            #run time (hh:mm:ss)
 
 echo $SLURM_JOB_ID
