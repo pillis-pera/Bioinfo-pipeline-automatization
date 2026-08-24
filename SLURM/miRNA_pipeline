@@ -16,7 +16,7 @@ echo $SLURM_JOB_NUM_NODES
 BOWTIE="/path/to/micromamba/envs/umi_tools_env/bin/bowtie"
 SAMTOOLS="/path/to/micromamba/envs/umi_tools_env/bin/samtools"
 UMI_TOOLS="/path/to/micromamba/envs/umi_tools_env/bin/umi_tools"
-WORKING_DIRECTORY="/path/to/working/directory/"
+WORKING_DIRECTORY="/path/to/working/directory/" #Path must have the "/" at the end!
 
 #File with all sample names must be created before hand
 SAMPLE="${WORKING_DIRECTORY}$(sed -n "${SLURM_ARRAY_TASK_ID}p" "${WORKING_DIRECTORY}samples.txt")" 
