@@ -1,0 +1,22 @@
+*.fastq
+*.fastq.gz
+*.fq
+*.fq.gz
+.nextflow/
+.nextflow.*
+work/
+.nextflow.log*
+.nextflow-history
+*.sam
+*.bam
+*.bai
+*.csv
+# Python
+__pycache__/
+*.pyc
+# VS Code
+.vscode/
+# OS files
+.DS_Store
+Thumbs.db
+*.ebwt

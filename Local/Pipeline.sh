@@ -81,5 +81,5 @@ done
 cd $DEDUPED_DIR
 for file in *.bam; do
 	base="${file%.sorted.dedup.bam}"
-	(echo "Reference,Length,Mapped,Unmapped"; samtools idxstats "$file" | tr '\t' ',') > "${COUNTS_DIR}/${base}.dedup.idxstats.csv"
+	(echo "Reference,Length,Mapped,Unmapped"; samtools idxstats "$file" | tr '\t' ',') > "${COUNTS_DIR}/${base}.csv"
 done
