@@ -1,4 +1,4 @@
-This repo contains a pipeline process raw reads obtained from an Illumina S2 cell NGS run prepared with a QIAGEN miRNA library prep kit with UMIs.
+This repo contains a pipeline to process raw reads obtained from an Illumina S2 cell NGS run prepared with a QIAGEN miRNA library prep kit with UMIs.
 
 **DIRECTORIES**
 - "Local" To run the pipeline locally con a BASH terminal.
