@@ -1,0 +1,16 @@
+#!/bin/bash
+#SBATCH -J job_name								                            #Job name
+#SBATCH -o /path/to/directory/job_name.o%j		                            #Output file name
+#SBATCH -e /path/to/directory/job_name.%N.%j.err	                        #Output error file
+#SBATCH --nodes=1								                            #Number of nodes
+#SBATCH --ntasks=1								                            #Number of tasks
+#SBATCH --cpus-per-task=1							                        #Number of cores available per task
+#SBATCH -p normal								                            #SLURM queue (partition)
+#SBATCH --array=a-b								                            #How many jobs in parallel (eg. 1-3 for three jobs)
+#SBATCH -t hh:mm:ss								                            #run time (hh:mm:ss)
+
+echo $SLURM_JOB_ID
+echo $SLURM_JOB_NAME
+echo $SLURM_JOB_NUM_NODES
+
+#Script:
