@@ -1,0 +1,23 @@
+#!/bin/bash
+#SBATCH -J merge_fastq							                                #Job name
+#SBATCH -o /path/to/working/directory/merged_fasq_gz/merge_fastq.o%j	    	#Output file name
+#SBATCH -e /path/to/working/directory/merged_fasq_gz/merge_fastq.%N.%j.err		#Output error file
+#SBATCH --nodes=1								                                #Number of nodes
+#SBATCH --ntasks=1								                                #Number of tasks
+#SBATCH --cpus-per-task=1							                            #Number of cores available per task
+#SBATCH -p normal								                                #SLURM queue (partition)
+#SBATCH --array=1-96							                                #How many jobs in parallel
+#SBATCH -t 00:05:00								                                #run time (hh:mm:ss)
+
+echo $SLURM_JOB_ID
+echo $SLURM_JOB_NAME
+echo $SLURM_JOB_NUM_NODES
+
+UNMERGED_DIRECTORY="/path/to/working/directory/"
+MERGED_DIRECTORY="/path/to/working/directory/merged_fasq_gz/"
+WORKING_DIRECTORY="/path/to/working/directory/" 
+BASE="$(sed "${SLURM_ARRAY_TASK_ID}q;d" ${WORKING_DIRECTORY}sample_names.txt)"
+#Script:
+
+echo "Merging ${BASE} test"
+cat ${WORKING_DIRECTORY}${BASE}* > "${MERGED_DIRECTORY}${BASE}.merged.fastq.gz"
