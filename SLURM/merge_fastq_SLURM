@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J merge_fastq						                                                #Job name
-#SBATCH -o /path/to/Bioinfo-pipeline-automatization/SLURM/Merge_logs/merge_fastq.o%j		#Output file name
-#SBATCH -e /path/to/Bioinfo-pipeline-automatization/SLURM/Merge_logs/merge_fastq.%N.%j.err	#Output error file
+#SBATCH -o /path/to/Bioinfo-pipeline-automatization/SLURM/Merge_logs/Merge_fastq.o%j		#Output file name
+#SBATCH -e /path/to/Bioinfo-pipeline-automatization/SLURM/Merge_logs/Merge_fastq.%N.%j.err	#Output error file
 #SBATCH --nodes=1								                                            #Number of nodes
 #SBATCH --ntasks=1  					                                                    #Number of tasks
 #SBATCH --cpus-per-task=1					                                                #Number of cores available per task
