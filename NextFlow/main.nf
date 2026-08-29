@@ -89,7 +89,7 @@ process COUNTS_VECTOR {
     
     script:
     """
-    (echo "Reference,Length,Mapped,Unmapped"; samtools idxstats ${sorted_dedup_bam} | tr '\t' ',') > "${sample}.dedup.idxstats.csv"
+    (echo "Reference,Length,Mapped,Unmapped"; samtools idxstats ${sorted_dedup_bam} | tr '\t' ',') > "${sample}.csv"
     """
 }
 workflow {
