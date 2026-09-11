@@ -1,33 +1,54 @@
-setwd("/path/to/Bioinfo-pipeline-automatization") #<-- Set this to your wd.
-
 ####################
 # Import libraries #
 ####################
 suppressPackageStartupMessages({
-    library(dplyr)
-    library(DESeq2)}
+    library(DESeq2)
+    library(here)}
 )
+
+##############
+# Load files #
+##############
+COUNTS_FILE <- here("Analysis","counts_matrix_filtered.csv")
+METADATA_FILE <- here("Analysis","Metadata","metadata.csv")
+OUTPUT_DIR <- here("Analysis","DESeq_results")
 
 #################
 # Configuration #
 #################
-padj_threshold <- 0.05
-fc_threshold <- 1.5
-lfc_threshold <- log2(fc_threshold)
+padj_threshold <- 0.05                  # Set adjusted p-value threshold
+fc_threshold <- 1.5                     # Set foldchange threshold
+lfc_threshold <- log2(fc_threshold)     # Set log2(foldchange) threshold
 
+test <- "standard"                      # Options: standard or threshold
+
+                                        # 'standard'    Ho: |log2FC| = 0 
+                                        #               Ha: |log2FC| != 0
+                                        # 'threshold'   Ho: |log2FC| <= lfc_threshold
+                                        #               Ha: |log2FC| > lfc_threshold
 
 #############
 # Load data #
 #############
-counts_matrix <- read.csv('Analysis/counts_matrix_filtered.csv', row.names=1, check.names=FALSE)
-sample_metadata <- read.csv('Analysis/Metadata/metadata.csv', row.names = 1)
+counts_matrix <- read.csv(COUNTS_FILE, 
+    row.names=1, 
+    check.names=FALSE
+)
+
+sample_metadata <- read.csv(METADATA_FILE, 
+    row.names = 1
+)
 sample_metadata <- sample_metadata[colnames(counts_matrix),]
+
+######################
+# Create results dir #
+######################
+dir.create(OUTPUT_DIR, recursive = TRUE, showWarnings = FALSE)
 
 ####################
 # Prepare metadata #
 ####################
 sample_metadata$sex <- factor(sample_metadata$sex)
-sample_metadata$condition <- factor(sample_metadata$condition)
 sample_metadata$condition <- relevel(
   factor(sample_metadata$condition),
   ref = "C"
@@ -58,13 +79,22 @@ log2_normalized_counts <- log2(normalized_counts+1)                 #Log2 of nor
 ###########
 # Results #
 ###########
-results_deseq <- results(
-    dds,
-    alpha = padj_threshold,
-    lfcThreshold = lfc_threshold,
-    altHypothesis = "greaterAbs"
-)
 
+if (test == "threshold") {
+    results_deseq <- results(
+        dds,
+        alpha = padj_threshold,
+        lfcThreshold = lfc_threshold,
+        altHypothesis = "greaterAbs"
+    )
+} else if (test == "standard") {
+    results_deseq <- results(
+    dds,
+    alpha = padj_threshold
+    )
+} else {
+    stop("Invalid test: '", test, "'. Use 'standard' or 'threshold'.")
+}
 results_deseq <- results_deseq[order(results_deseq$padj), ]
 
 #########################
@@ -86,4 +116,23 @@ significant_mirnas <- row.names(
         grep("miR|let",row.names(significant_results)
         ),
     ]
+)
+
+################
+# Save results #
+################
+write.csv(
+    results_deseq,
+    file.path(
+        OUTPUT_DIR, 
+        paste0("deseq_results_", test, ".csv")
+    )
+)
+write.csv(
+    log2_normalized_counts,
+    file.path(OUTPUT_DIR, "log2_normalized_reads.csv")
+)
+write.csv(
+    assay(vst_counts),
+    file.path(OUTPUT_DIR, "vst_counts.csv")
 )
