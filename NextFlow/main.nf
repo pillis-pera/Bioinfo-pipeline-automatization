@@ -1,7 +1,3 @@
-// Parameters
-params.sample = "${projectDir}/../Samples/merged/*.fastq*" //Directory with relevant files (preferable only .fastq)
-params.bowtie_index = "${projectDir}/../Reference/hsa_mature_index"
-
 // UMI Extraction Process
 process UMI_EXTRACTION {
     tag "${sample}"
@@ -15,9 +11,29 @@ process UMI_EXTRACTION {
     script:
     """
     umi_tools extract \
-        --extract-method=regex --bc-pattern='.+(?P<discard_1>AACTGTAGGCACCATCAAT){s<=2}(?P<umi_1>.{12})(?P<discard_2>.*)\$' \
+        --extract-method=regex \
+        --bc-pattern='.+(?P<discard_1>AACTGTAGGCACCATCAAT){s<=2}(?P<umi_1>.{12})(?P<discard_2>.*)\$' \
         -I "${fastq}" \
         -S "${sample}.extracted.fastq"
+    """
+}
+
+// Fastp filtering
+process FASTP_FILTER{
+    tag "${sample}"
+
+    input:
+    tuple val(sample), path(fastq)
+
+    output:
+    tuple val(sample), path("${sample}.filtered.fastq")
+
+    script:
+    """
+    fastp \
+        -i "${fastq}" \
+        -o "${sample}.filtered.fastq" \
+        -l ${params.min_len}
     """
 }
 
@@ -61,6 +77,7 @@ process SORT_BAM {
     """
 }
 
+// UMI deduplication
 process UMI_DEDUP {
     tag "${sample}"
 
@@ -78,6 +95,7 @@ process UMI_DEDUP {
     """
 }
 
+// Final counts
 process COUNTS_VECTOR {
     tag "${sample}"
 
@@ -85,31 +103,40 @@ process COUNTS_VECTOR {
     tuple val(sample),path(sorted_dedup_bam),path(indexed_dedup_bam)
 
     output:
-    path("${sample}.dedup.idxstats.csv")
+    path("${sample}.csv")
     
     script:
     """
-    (echo "Reference,Length,Mapped,Unmapped"; samtools idxstats ${sorted_dedup_bam} | tr '\t' ',') > "${sample}.dedup.idxstats.csv"
+    (echo "Reference,Length,Mapped,Unmapped"; samtools idxstats ${sorted_dedup_bam} | tr '\t' ',') > "${sample}.csv"
     """
 }
-workflow {
+
+// Merging samples
+process MERGING {
+    tag "${base}"
+
+    input:
+    tuple val(base), val(type), path(samples)
+
+    output:
+    tuple val(base), path("${base}${type}")
+
+    script:
+    """
+    cat ${samples} > ${base}${type}
+    """
+}
+
+workflow MIRNA_PIPELINE {
+    take:
+    sample
+    
     main:
-    reads_ch = channel
-        .fromPath(params.sample, checkIfExists: true)
-        .map { fastq ->
-            tuple(fastq.simpleName, fastq)
-        }
-    // reads_ch.view { sample, fastq ->
-    //     "INPUT -> ${sample} | ${fastq}"
-    // }
+    extracted_ch = UMI_EXTRACTION(sample)
 
-    extracted_ch = UMI_EXTRACTION(reads_ch)
+    fasp_ch = FASTP_FILTER(extracted_ch)
 
-    // extracted_ch.view { sample, fastq ->
-    //     "OUTPUT -> ${sample} | ${fastq}"
-    // }
-
-    aligned_ch = BOWTIE_ALIGNMENT(extracted_ch)
+    aligned_ch = BOWTIE_ALIGNMENT(fasp_ch)
 
     sorted_ch = SORT_BAM(aligned_ch)
 
@@ -117,10 +144,58 @@ workflow {
 
     counts_ch = COUNTS_VECTOR(dedup_ch)
 
-    publish:
+    emit:
     counts = counts_ch
 }
 
+workflow MERGE_LANES {
+    take:
+    samples
+    
+    main:
+    merging_ch = samples
+        .map { sample ->
+            def stem = sample.simpleName
+            def base = sample.name.split('_L00')[0]
+            def type = sample.name.substring(stem.size())
+            tuple(base, type, sample)
+        }
+        .groupTuple(by: [0, 1])
+
+    merged_ch = MERGING(merging_ch)
+
+    emit:
+    merged = merged_ch
+}
+
+workflow {
+    main:
+    if (params.merge_lanes) {
+
+        unmerged_ch = channel.fromPath(
+            "${params.unmerged}/*.fastq*",
+            checkIfExists: true)
+
+        MERGE_LANES(unmerged_ch)
+
+        samples_ch = MERGE_LANES.out.merged
+
+    } else {
+
+        samples_ch = channel
+            .fromPath("${params.merged}/*.fastq*", 
+            checkIfExists: true)
+            .map{ fastq -> tuple(fastq.simpleName, fastq)}
+    }
+    samples_ch.view {"Pipeline input: $samples_ch"}
+    MIRNA_PIPELINE(samples_ch)
+
+    publish:
+    counts = MIRNA_PIPELINE.out.counts
+}
+
 output {
-    counts {mode 'copy'}
+    counts { 
+        mode 'copy'
+    }
 }

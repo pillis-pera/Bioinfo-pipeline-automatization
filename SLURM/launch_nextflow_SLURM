@@ -1,0 +1,46 @@
+#!/bin/bash
+
+#SBATCH -J launch_nextflow									                                    #Job name
+#SBATCH -o /path/to/Bioinfo-pipeline-automatization/SLURM/launch_nextflow.o%j	                #Output file name
+#SBATCH -e /path/to/Bioinfo-pipeline-automatization/SLURM/launch_nextflow.%N.%j.err	            #Output error file
+#SBATCH --nodes=1		                                                        				#Number of nodes
+#SBATCH --ntasks=1					                                               				#Number of tasks
+#SBATCH --cpus-per-task=1		                                           						#Number of cores available per task
+#SBATCH -p normal			                                            						#SLURM queue (partition)
+#SBATCH --array=1	                                            								#How many jobs in parallel
+#SBATCH -t 11:11:11	                                            								#run time (hh:mm:ss)
+
+
+set -euo pipefail
+
+
+# ============================================================
+# Configuration
+# ============================================================
+
+MICROMAMBA="/path/to/micromamba_dir/micromamba"                     #Absolute path to the micromamba executable
+
+NEXTFLOW_ENV="/path/to/micromamba/envs/nextflow_environment"        #Absolute path to the environment containing nextflow
+
+PIPELINE_DIR="/path/to/Bioinfo-pipeline-automatization/NextFlow"    #Absolute path to directory with main.nf & nextflow.config
+
+
+# ============================================================
+# Run
+# ============================================================
+
+cd "$PIPELINE_DIR"
+
+echo "Nextflow driver started"
+echo "SLURM job: $SLURM_JOB_ID"
+echo "Node: $(hostname)"
+echo "Pipeline directory: $(pwd)"
+
+export PATH="/path/to/micromamba_dir/:$PATH"                        #Absolute path to the directory containing the micromamba executable (Not the file itself) 
+                                                                    #so new SLURM jobs have access to the micromamba command
+
+"$MICROMAMBA" run \
+    -p "$NEXTFLOW_ENV" \
+    nextflow run main.nf \
+        -profile lns \
+        -resume
