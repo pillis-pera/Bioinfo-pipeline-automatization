@@ -11,9 +11,29 @@ process UMI_EXTRACTION {
     script:
     """
     umi_tools extract \
-        --extract-method=regex --bc-pattern='.+(?P<discard_1>AACTGTAGGCACCATCAAT){s<=2}(?P<umi_1>.{12})(?P<discard_2>.*)\$' \
+        --extract-method=regex \
+        --bc-pattern='.+(?P<discard_1>AACTGTAGGCACCATCAAT){s<=2}(?P<umi_1>.{12})(?P<discard_2>.*)\$' \
         -I "${fastq}" \
         -S "${sample}.extracted.fastq"
+    """
+}
+
+// Fastp filtering
+process FASTP_FILTER{
+    tag "${sample}"
+
+    input:
+    tuple val(sample), path(fastq)
+
+    output:
+    tuple val(sample), path("${sample}.filtered.fastq")
+
+    script:
+    """
+    fastp \
+        -i "${fastq}" \
+        -o "${sample}.filtered.fastq" \
+        -l ${params.min_len}
     """
 }
 
@@ -114,7 +134,9 @@ workflow MIRNA_PIPELINE {
     main:
     extracted_ch = UMI_EXTRACTION(sample)
 
-    aligned_ch = BOWTIE_ALIGNMENT(extracted_ch)
+    fasp_ch = FASTP_FILTER(extracted_ch)
+
+    aligned_ch = BOWTIE_ALIGNMENT(fasp_ch)
 
     sorted_ch = SORT_BAM(aligned_ch)
 
