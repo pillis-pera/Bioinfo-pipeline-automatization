@@ -13,9 +13,10 @@ echo $SLURM_JOB_ID
 echo $SLURM_JOB_NAME
 echo $SLURM_JOB_NUM_NODES
 
-BOWTIE="/path/to/micromamba/envs/umi_tools_env/bin/bowtie"
-SAMTOOLS="/path/to/micromamba/envs/umi_tools_env/bin/samtools"
-UMI_TOOLS="/path/to/micromamba/envs/umi_tools_env/bin/umi_tools"
+BOWTIE="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/bowtie"
+SAMTOOLS="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/samtools"
+UMI_TOOLS="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/umi_tools"
+FASTP="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/fastp"
 WORKING_DIRECTORY="/path/to/working/directory/" #Path must have the "/" at the end!
 
 #File with all sample names must be created before hand
@@ -24,12 +25,14 @@ SAMPLE="${WORKING_DIRECTORY}$(sed -n "${SLURM_ARRAY_TASK_ID}p" "${WORKING_DIRECT
 BASE=$(basename "$SAMPLE" .fastq)
 PREFIX="${WORKING_DIRECTORY}${BASE}"
 
-#Bowtie reference must be created before hand using "bowtie-build <reference.fa> <index_reference_name>"
+#Bowtie reference must be created beforehand using "bowtie-build <reference.fa> <index_reference_name>"
 REFERENCE="/path/to/directory_with_ebwt_files/index_reference_name"
 
 "$UMI_TOOLS" extract --extract-method=regex --bc-pattern='.+(?P<discard_1>AACTGTAGGCACCATCAAT){s<=2}(?P<umi_1>.{12})(?P<discard_2>.*)$' -I "${PREFIX}.fastq" -S "${PREFIX}_umiextracted.fastq"
 
-"$BOWTIE" -p 1 -q -S "${REFERENCE}" "${PREFIX}_umiextracted.fastq" > "${PREFIX}.sam"
+"$FASTP" -i "${PREFIX}_umiextracted.fastq" -o "${PREFIX}_filtered.fastq" -l 17
+
+"$BOWTIE" -p 1 -q -S "${REFERENCE}" "${PREFIX}_filtered.fastq" > "${PREFIX}.sam"
 
 "$SAMTOOLS" view -bS "${PREFIX}.sam" | "$SAMTOOLS" sort -@ 1 -o "${PREFIX}.sorted.bam"
 
