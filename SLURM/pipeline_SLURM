@@ -13,11 +13,14 @@ echo $SLURM_JOB_ID
 echo $SLURM_JOB_NAME
 echo $SLURM_JOB_NUM_NODES
 
+# ============================================================
+# Declare absolute paths to environment tools
+# ============================================================
 BOWTIE="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/bowtie"
 SAMTOOLS="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/samtools"
 UMI_TOOLS="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/umi_tools"
 FASTP="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/fastp"
-WORKING_DIRECTORY="/path/to/working/directory/" #Path must have the "/" at the end!
+WORKING_DIRECTORY="/path/to/working/directory/" # Absolute path to directory that will store results. Path must have the "/" at the end!
 
 #File with all sample names must be created before hand
 SAMPLE="${WORKING_DIRECTORY}$(sed -n "${SLURM_ARRAY_TASK_ID}p" "${WORKING_DIRECTORY}samples.txt")" 
