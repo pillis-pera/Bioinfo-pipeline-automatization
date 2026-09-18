@@ -1,0 +1,39 @@
+#!/bin/bash
+frames=('|' '/' '-' '\')
+echo "Getting reference file from MirGeneDB:"
+curl -fL 'https://mirgenedb.org/fasta/hsa?mat=1' -o hsa_mature_RNA_miRGeneDB.fa
+sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRGeneDB.fa > hsa_mature_DNA_miRGeneDB.fa            #Turn U to Ts
+
+echo "Getting reference file from miRBase:"
+# curl -fL 'LINK TO MIRBASE (IT WAS DOWN WHEN I CODED THIS)' -o hsa_mature_RNA_miRBase.fa
+# echo sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRBase.fa > hsa_mature_DNA_miRBase.fa           #Turn U to Ts
+
+echo "Merging reference files"
+cat hsa_mature_DNA_miRGeneDB.fa hsa_mature_DNA_miRBase.fa > hsa_mature_DNA.fa
+sleep 2
+
+echo "Removing duplicates"
+declare -A references
+while IFS= read -r seqID; do
+    IFS= read -r seq
+    # echo "$seq"
+    if [[ -z "${references[$seq]+exist}" ]]; then
+        references["$seq"]="$seqID"
+    fi
+done < hsa_mature_DNA.fa
+
+for ((i=0; i<30; i++)); do
+    printf '\rProcessing... %s' "${frames[i % 4]}"
+    sleep 0.1
+done
+
+for seq in "${!references[@]}"; do
+    printf '%s\n%s\n' "${references[$seq]}" "$seq"
+done > hsa_mature_DNA.fa
+
+printf '\rProcessing... done!\n'
+
+if command -v bowtie-build > /dev/null 2>&1; then
+    echo "All good we can build"
+else 
+    echo "bowtie-build un available. Perhaps on the wrong env?"
