@@ -2,6 +2,7 @@
 *.fastq.gz
 *.fq
 *.fq.gz
+*.fa
 .nextflow/
 .nextflow.*
 work/
