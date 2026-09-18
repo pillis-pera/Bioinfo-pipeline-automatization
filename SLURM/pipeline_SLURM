@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH -J miRNA_pipeline								                    #Job name
-#SBATCH -o /path/to/directory/miRNA_pipeline.o%j		                    #Output file name
-#SBATCH -e /path/to/directory/miRNA_pipeline.%N.%j.err	                    #Output error file
+#SBATCH -o /path/to/directory/Bioinfo-pipeline-automatization/SLURM/logs_pipeline/pipeline.o%j		                    #Output file name
+#SBATCH -e /path/to/directory/Bioinfo-pipeline-automatization/SLURM/logs_pipeline/pipeline.%N.%j.err	                    #Output error file
 #SBATCH --nodes=1								                            #Number of nodes
 #SBATCH --ntasks=1								                            #Number of tasks
 #SBATCH --cpus-per-task=1							                        #Number of cores available per task
@@ -14,26 +14,56 @@ echo $SLURM_JOB_NAME
 echo $SLURM_JOB_NUM_NODES
 
 # ============================================================
+# Declare absolute path repo directory
+# ============================================================
+
+# Must include the last "/" otherwise pipeline wont work !!!
+WORKING_DIRECTORY="/path/to/Bioinfo-pipeline-automatization/"
+
+# Bowtie reference must be created beforehand using "bowtie-build <reference.fa> <index_reference_name>"
+REFERENCE="/path/to/Bioinfo-pipeline-automatization/Reference/hsa_mature_index"
+
+# ============================================================
 # Declare absolute paths to environment tools
 # ============================================================
+
 BOWTIE="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/bowtie"
 SAMTOOLS="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/samtools"
 UMI_TOOLS="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/umi_tools"
 FASTP="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/fastp"
-WORKING_DIRECTORY="/path/to/working/directory/" # Absolute path to directory that will store results. Path must have the "/" at the end!
 
-#File with all sample names must be created before hand
-SAMPLE="${WORKING_DIRECTORY}$(sed -n "${SLURM_ARRAY_TASK_ID}p" "${WORKING_DIRECTORY}samples.txt")" 
+# ============================================================
+# Declare variables
+# ============================================================
 
-BASE=$(basename "$SAMPLE" .fastq)
-PREFIX="${WORKING_DIRECTORY}${BASE}"
+# File with all sample names must be created before hand
+SAMPLE="${WORKING_DIRECTORY}Samples/merged/$(sed -n "${SLURM_ARRAY_TASK_ID}p" "${WORKING_DIRECTORY}Samples/samplesheet.txt")" 
 
-#Bowtie reference must be created beforehand using "bowtie-build <reference.fa> <index_reference_name>"
-REFERENCE="/path/to/directory_with_ebwt_files/index_reference_name"
+# Get sample basename to tag every output of the pipeline
+BASE=$(basename "$SAMPLE")
+BASE=${BASE%.gz}
+BASE=${BASE%.fastq}
 
-"$UMI_TOOLS" extract --extract-method=regex --bc-pattern='.+(?P<discard_1>AACTGTAGGCACCATCAAT){s<=2}(?P<umi_1>.{12})(?P<discard_2>.*)$' -I "${PREFIX}.fastq" -S "${PREFIX}_umiextracted.fastq"
+# Create directory for pipeline outputs
+SAMPLE_DIR="${WORKING_DIRECTORY}SLURM/logs_merge/pipeline.${SLURM_JOB_ID}.${BASE}"
+mkdir -p "${SAMPLE_DIR}"
+PREFIX="${SAMPLE_DIR}/${BASE}"
 
-"$FASTP" -i "${PREFIX}_umiextracted.fastq" -o "${PREFIX}_filtered.fastq" -l 17
+# ============================================================
+# Pipeline
+# ============================================================
+
+"$UMI_TOOLS" extract \
+    --extract-method=regex \
+    --bc-pattern='.+(?P<discard_1>AACTGTAGGCACCATCAAT){s<=2}(?P<umi_1>.{12})(?P<discard_2>.*)$' \
+    -I "${PREFIX}.fastq" \
+    -S "${PREFIX}_umiextracted.fastq"
+
+"$FASTP" -i "${PREFIX}_umiextracted.fastq" \
+    -o "${PREFIX}_filtered.fastq" \
+    -l 17 \
+    --json "${PREFIX}_fastp.json" \
+    --html "${PREFIX}_fastp.html"
 
 "$BOWTIE" -p 1 -q -S "${REFERENCE}" "${PREFIX}_filtered.fastq" > "${PREFIX}.sam"
 
