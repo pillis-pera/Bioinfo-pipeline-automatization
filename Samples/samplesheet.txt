@@ -1,0 +1,3 @@
+sample01_S1.fastq.gz
+sample02_S2.fastq.gz
+smaple03_S2.fastq.gz
