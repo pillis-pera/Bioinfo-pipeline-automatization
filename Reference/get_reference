@@ -1,0 +1,53 @@
+#!/bin/bash
+frames=('|' '/' '-' '\')
+filesize=$((RANDOM % 21 + 10))
+echo "Getting reference file from MirGeneDB:"
+curl -fL 'https://mirgenedb.org/fasta/hsa?mat=1' -o hsa_mature_RNA_miRGeneDB.fa
+sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRGeneDB.fa > hsa_mature_DNA_miRGeneDB.fa          #Turn U to Ts
+
+echo "Getting reference file from miRBase:"
+curl -fL 'https://www.mirbase.org/download/mature.fa' -o mature_RNA_miRBase.fa
+awk '/^>/ {keep = ($0 ~ /^>hsa-/)} keep' mature_RNA_miRBase.fa > hsa_mature_RNA_miRBase.fa
+sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRBase.fa > hsa_mature_DNA_miRBase.fa              #Turn U to Ts
+
+echo "Merging reference files"
+cat hsa_mature_DNA_miRGeneDB.fa hsa_mature_DNA_miRBase.fa > hsa_mature_DNA.fa
+sleep 0.5
+
+echo "Removing duplicates"
+declare -A references
+while IFS= read -r seqID; do
+    IFS= read -r seq
+    if [[ -z "${references[$seq]+exist}" ]]; then
+        references["$seq"]="$seqID"
+    fi
+done < hsa_mature_DNA.fa
+
+for ((i=0; i<$filesize; i++)); do
+    printf '\rProcessing... %s' "${frames[i % 4]}"
+    sleep 0.1
+done
+
+for seq in "${!references[@]}"; do
+    printf '%s\n%s\n' "${references[$seq]}" "$seq"
+done > hsa_mature_DNA.fa
+
+printf '\rProcessing... done!\n'
+
+read -r -p "Build bowtie-index with downloaded references? [Y/n] " answer
+
+case "$answer" in
+    [Yy]|"")
+        echo "Building..."
+        ;;
+    *)
+        echo "Ok I didnt want to build it either way >:("
+        exit 0
+        ;;
+esac
+
+if command -v bowtie-build > /dev/null 2>&1; then
+    bowtie-build hsa_mature_DNA.fa hsa_mature_index
+else 
+    echo "Error! ----bowtie-build unavailable.---- Perhaps on the wrong env?"
+fi
