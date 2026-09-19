@@ -22,7 +22,7 @@ WORKING_DIRECTORY="/path/to/Bioinfo-pipeline-automatization/"
 
 # Bowtie reference must be created beforehand using "bowtie-build <reference.fa> <index_reference_name>"
 # You can run Reference/get_reference to automatically download miRNAs from miRBase and MirGeneDB
-REFERENCE="${WORKING_DIRECTORY}Reference/hsa_mature_index"
+REFERENCE="${WORKING_DIRECTORY}Reference/index_reference_name"
 
 # ============================================================
 # Declare absolute paths to environment tools
