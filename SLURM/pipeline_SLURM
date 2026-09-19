@@ -21,7 +21,8 @@ echo $SLURM_JOB_NUM_NODES
 WORKING_DIRECTORY="/path/to/Bioinfo-pipeline-automatization/"
 
 # Bowtie reference must be created beforehand using "bowtie-build <reference.fa> <index_reference_name>"
-REFERENCE="/path/to/Bioinfo-pipeline-automatization/Reference/hsa_mature_index"
+# You can run Reference/get_reference to automatically download miRNAs from miRBase and MirGeneDB
+REFERENCE="${WORKING_DIRECTORY}Reference/hsa_mature_index"
 
 # ============================================================
 # Declare absolute paths to environment tools
@@ -36,7 +37,10 @@ FASTP="/path/to/micromamba/envs/ENVIRONMENT_NAME/bin/fastp"
 # Declare variables
 # ============================================================
 
-# File with all sample names must be created before hand
+# File with all sample names must be created before hand (e.g. in Samples/samplesheet.txt)
+# Write full sample name without path and with file type
+
+# ~~~~~!! IMPORTANT: samples in samplesheet.txt must exist in Samples/merged !!~~~~~
 SAMPLE="${WORKING_DIRECTORY}Samples/merged/$(sed -n "${SLURM_ARRAY_TASK_ID}p" "${WORKING_DIRECTORY}Samples/samplesheet.txt")" 
 
 # Get sample basename to tag every output of the pipeline
