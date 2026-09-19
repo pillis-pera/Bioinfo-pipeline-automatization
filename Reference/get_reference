@@ -1,12 +1,14 @@
 #!/bin/bash
 frames=('|' '/' '-' '\')
+filesize=$((RANDOM % 21 + 10))
 echo "Getting reference file from MirGeneDB:"
 curl -fL 'https://mirgenedb.org/fasta/hsa?mat=1' -o hsa_mature_RNA_miRGeneDB.fa
-sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRGeneDB.fa > hsa_mature_DNA_miRGeneDB.fa            #Turn U to Ts
+sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRGeneDB.fa > hsa_mature_DNA_miRGeneDB.fa          #Turn U to Ts
 
 echo "Getting reference file from miRBase:"
-curl -fL 'LINK TO MIRBASE (IT WAS DOWN WHEN I CODED THIS)' -o hsa_mature_RNA_miRBase.fa
-echo sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRBase.fa > hsa_mature_DNA_miRBase.fa           #Turn U to Ts
+curl -fL 'https://www.mirbase.org/download/mature.fa' -o mature_RNA_miRBase.fa
+awk '/^>/ {keep = ($0 ~ /^>hsa-/)} keep' mature_RNA_miRBase.fa > hsa_mature_RNA_miRBase.fa
+sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRBase.fa > hsa_mature_DNA_miRBase.fa              #Turn U to Ts
 
 echo "Merging reference files"
 cat hsa_mature_DNA_miRGeneDB.fa hsa_mature_DNA_miRBase.fa > hsa_mature_DNA.fa
@@ -21,7 +23,7 @@ while IFS= read -r seqID; do
     fi
 done < hsa_mature_DNA.fa
 
-for ((i=0; i<10; i++)); do
+for ((i=0; i<$filesize; i++)); do
     printf '\rProcessing... %s' "${frames[i % 4]}"
     sleep 0.1
 done
