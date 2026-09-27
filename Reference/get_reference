@@ -11,7 +11,7 @@ awk '/^>/ {keep = ($0 ~ /^>hsa-/)} keep' mature_RNA_miRBase.fa > hsa_mature_RNA_
 sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRBase.fa > hsa_mature_DNA_miRBase.fa              #Turn U to Ts
 
 echo "Merging reference files"
-cat hsa_mature_DNA_miRGeneDB.fa hsa_mature_DNA_miRBase.fa > hsa_mature_DNA.fa
+cat hsa_mature_DNA_miRBase.fa hsa_mature_DNA_miRGeneDB.fa > hsa_mature_DNA.fa
 sleep 0.5
 
 echo "Removing duplicates"
@@ -33,6 +33,41 @@ for seq in "${!references[@]}"; do
 done > hsa_mature_DNA.fa
 
 printf '\rProcessing... done!\n'
+
+sed -i '/^>/s/Hsa/hsa/g' hsa_mature_DNA.fa
+sed -i '/^>/s/Mir/miR/g' hsa_mature_DNA.fa
+sed -i '/^>/s/ .*//' hsa_mature_DNA.fa
+sed -i '/^>/s/_/-/g' hsa_mature_DNA.fa
+
+
+echo "The following miRNa were deduplicated" > reference_log.txt
+# echo "Reference keys BEFORE: ${!references[@]}"
+declare -A references=()
+count=0
+# echo "Reference keys AFTER: ${!references[@]}"
+while IFS= read -r seqID; do
+    IFS= read -r seq
+    if [[ -z "${references[$seqID]+exist}" ]]; then
+        references["$seqID"]="$seq"
+    elif [[ "${#seq}" -gt "${#references[$seqID]}" ]]; then
+        echo >> reference_log.txt
+        printf "\n$seqID\n${references[$seqID]} replaced with \n${seq}" >> reference_log.txt
+        references["$seqID"]="$seq"
+        ((count += 1))
+    else
+        echo >> reference_log.txt
+        printf "\n$seqID\n${references[$seqID]} kept over \n${seq}" >> reference_log.txt
+        ((count += 1))
+    fi
+done < "hsa_mature_DNA.fa"
+
+echo >> reference_log.txt
+echo "--------------------------------------------------------" >> reference_log.txt
+echo "A total of $count miRNAs were deduplicated by sequenceID" >> reference_log.txt
+
+for seqID in "${!references[@]}"; do
+    printf '%s\n%s\n' "$seqID" "${references[$seqID]}"
+done > hsa_mature_DNA.fa
 
 read -r -p "Build bowtie-index with downloaded references? [Y/n] " answer
 
