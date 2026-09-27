@@ -1,74 +1,108 @@
 #!/bin/bash
-frames=('|' '/' '-' '\')
-filesize=$((RANDOM % 21 + 10))
-echo "Getting reference file from MirGeneDB:"
-curl -fL 'https://mirgenedb.org/fasta/hsa?mat=1' -o hsa_mature_RNA_miRGeneDB.fa
-sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRGeneDB.fa > hsa_mature_DNA_miRGeneDB.fa          #Turn U to Ts
 
-echo "Getting reference file from miRBase:"
+# ------------------------------------------------------------------------
+# Get files from data bases and change RNA to DNA
+# ------------------------------------------------------------------------
+# echo "Getting reference file from MirGeneDB:"
+# curl -fL 'https://mirgenedb.org/fasta/hsa?mat=1' -o hsa_mature_RNA_miRGeneDB.fa
+# sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRGeneDB.fa > hsa_mature_DNA_miRGeneDB.fa          #Turn U to Ts
+
+# echo "Getting reference file from miRBase:"
 curl -fL 'https://www.mirbase.org/download/mature.fa' -o mature_RNA_miRBase.fa
 awk '/^>/ {keep = ($0 ~ /^>hsa-/)} keep' mature_RNA_miRBase.fa > hsa_mature_RNA_miRBase.fa
 sed '/^>/! y/Uu/Tt/' hsa_mature_RNA_miRBase.fa > hsa_mature_DNA_miRBase.fa              #Turn U to Ts
 
-echo "Merging reference files"
-cat hsa_mature_DNA_miRBase.fa hsa_mature_DNA_miRGeneDB.fa > hsa_mature_DNA.fa
-sleep 0.5
+# ------------------------------------------------------------------------
+# Merge databases files
+# ------------------------------------------------------------------------
+# echo "Merging reference files"
+# cat hsa_mature_DNA_miRBase.fa hsa_mature_DNA_miRGeneDB_missing.fa > hsa_mature_DNA.fa
+cp hsa_mature_DNA_miRBase.fa hsa_mature_DNA.fa
 
-echo "Removing duplicates"
-declare -A references
-while IFS= read -r seqID; do
-    IFS= read -r seq
-    if [[ -z "${references[$seq]+exist}" ]]; then
-        references["$seq"]="$seqID"
-    fi
-done < hsa_mature_DNA.fa
-
-for ((i=0; i<$filesize; i++)); do
-    printf '\rProcessing... %s' "${frames[i % 4]}"
-    sleep 0.1
-done
-
-for seq in "${!references[@]}"; do
-    printf '%s\n%s\n' "${references[$seq]}" "$seq"
-done > hsa_mature_DNA.fa
-
-printf '\rProcessing... done!\n'
-
+# ------------------------------------------------------------------------
+# Name harmonization
+# ------------------------------------------------------------------------
 sed -i '/^>/s/Hsa/hsa/g' hsa_mature_DNA.fa
 sed -i '/^>/s/Mir/miR/g' hsa_mature_DNA.fa
+sed -i '/^>/s/Let/let/g' hsa_mature_DNA.fa
 sed -i '/^>/s/ .*//' hsa_mature_DNA.fa
 sed -i '/^>/s/_/-/g' hsa_mature_DNA.fa
 
-
-echo "The following miRNa were deduplicated" > reference_log.txt
-# echo "Reference keys BEFORE: ${!references[@]}"
+# ------------------------------------------------------------------------
+# Deduplication by name
+# ------------------------------------------------------------------------
+echo "The following miRNAs were deduplicated" > reference_log.txt
 declare -A references=()
 count=0
-# echo "Reference keys AFTER: ${!references[@]}"
 while IFS= read -r seqID; do
     IFS= read -r seq
     if [[ -z "${references[$seqID]+exist}" ]]; then
         references["$seqID"]="$seq"
-    elif [[ "${#seq}" -gt "${#references[$seqID]}" ]]; then
-        echo >> reference_log.txt
-        printf "\n$seqID\n${references[$seqID]} replaced with \n${seq}" >> reference_log.txt
-        references["$seqID"]="$seq"
-        ((count += 1))
+    elif [[  "${references[$seqID]}" == *"${seq}"* || "${seq}" == *"${references[$seqID]}"* ]]; then
+        if [[ "${#seq}" -gt "${#references[$seqID]}" ]]; then
+            echo >> reference_log.txt
+            printf "\n$seqID\n${references[$seqID]} replaced with \n${seq}" >> reference_log.txt
+            references["$seqID"]="$seq"
+            ((count += 1))
+        else
+            echo >> reference_log.txt
+            printf "\n$seqID\n${references[$seqID]} kept over \n${seq}" >> reference_log.txt
+            ((count += 1))
+        fi
     else
+        echo "$seqID"
+        echo "${seq}" == "${references[$seqID]}"
+        echo "seqID is duplicated but sequences dont match"
+        read -p $'Type the sequence you want to assign:\n' seq </dev/tty
+        references["$seqID"]="$seq"
         echo >> reference_log.txt
-        printf "\n$seqID\n${references[$seqID]} kept over \n${seq}" >> reference_log.txt
-        ((count += 1))
+        printf "\n$seqID\n${seq} was typed in by user." >> reference_log.txt
     fi
 done < "hsa_mature_DNA.fa"
 
 echo >> reference_log.txt
+echo >> reference_log.txt
 echo "--------------------------------------------------------" >> reference_log.txt
 echo "A total of $count miRNAs were deduplicated by sequenceID" >> reference_log.txt
+echo "--------------------------------------------------------" >> reference_log.txt
 
+# Write the new deduplicated by name fasta
 for seqID in "${!references[@]}"; do
     printf '%s\n%s\n' "$seqID" "${references[$seqID]}"
 done > hsa_mature_DNA.fa
 
+# ------------------------------------------------------------------------
+# Deduplication by sequence
+# ------------------------------------------------------------------------
+declare -A references=()
+count=0
+while IFS= read -r seqID; do
+    IFS= read -r seq
+    seqID="${seqID#>}"
+    if [[ -z "${references[$seq]+exist}" ]]; then
+        references["$seq"]="$seqID"
+    else
+        echo >> reference_log.txt
+        printf "\n${references[$seq]}\n${seq} had following ID added: \n$seqID" >> reference_log.txt
+        references["$seq"]+="|$seqID"
+        ((count += 1))
+    fi
+done < hsa_mature_DNA.fa
+
+echo >> reference_log.txt
+echo >> reference_log.txt
+echo "--------------------------------------------------------" >> reference_log.txt
+echo "A total of $count miRNAs were deduplicated by sequence" >> reference_log.txt
+echo "--------------------------------------------------------" >> reference_log.txt
+
+# Write the new deduplicated by sequence fasta
+for seq in "${!references[@]}"; do
+    printf '%s\n%s\n' ">${references[$seq]}" "$seq"
+done > hsa_mature_DNA.fa
+
+# ------------------------------------------------------------------------
+# Build indexes with bowtie
+# ------------------------------------------------------------------------
 read -r -p "Build bowtie-index with downloaded references? [Y/n] " answer
 
 case "$answer" in
