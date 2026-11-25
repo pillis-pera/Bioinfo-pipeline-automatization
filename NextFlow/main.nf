@@ -45,7 +45,7 @@ process BOWTIE_ALIGNMENT{
     tuple val(sample), path(fastq)
 
     output:
-    tuple val(sample), path("${sample}.sam")
+    tuple val(sample), path("${sample}.sorted.bam")
 
     script:
     """
@@ -53,27 +53,29 @@ process BOWTIE_ALIGNMENT{
         -p ${task.cpus} \
         -q \
         -S \
+        ${params.missmatch_mode} ${params.missmatch_tolerance} \
         ${params.bowtie_index} \
         ${fastq} \
-        > ${sample}.sam
+    | samtools sort \
+        -@ ${task.cpus} \
+        -o "${sample}.sorted.bam" \
+        -
     """
 }
 
 // Sorting steps
-process SORT_BAM {
+process INDEX_BAM {
     tag "${sample}"
 
     input:
-    tuple val(sample),path(sam)
+    tuple val(sample),path(sorted_bam)
 
     output:
-    tuple val(sample), path("${sample}.sorted.bam"), path("${sample}.sorted.bam.bai")
+    tuple val(sample), path(sorted_bam), path("${sample}.sorted.bam.bai")
 
     script:
     """
-    samtools view -bS ${sam} | samtools sort -@ ${task.cpus} -o "${sample}.sorted.bam"
-
-    samtools index "${sample}.sorted.bam"
+    samtools index "${sorted_bam}"
     """
 }
 
@@ -89,7 +91,7 @@ process UMI_DEDUP {
 
     script:
     """
-    umi_tools dedup --method=${task.ext.method} --stdin=${sorted_bam} --stdout="${sample}.sorted.dedup.bam"
+    umi_tools dedup --method=${params.dedup_method} --stdin=${sorted_bam} --stdout="${sample}.sorted.dedup.bam"
 
     samtools index "${sample}.sorted.dedup.bam"
     """
@@ -138,7 +140,7 @@ workflow MIRNA_PIPELINE {
 
     aligned_ch = BOWTIE_ALIGNMENT(fasp_ch)
 
-    sorted_ch = SORT_BAM(aligned_ch)
+    sorted_ch = INDEX_BAM(aligned_ch)
 
     dedup_ch = UMI_DEDUP(sorted_ch)
 
