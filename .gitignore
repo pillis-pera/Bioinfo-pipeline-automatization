@@ -24,3 +24,8 @@ Thumbs.db
 Images
 *.png
 *jpg
+Other
+*.json
+*.html
+reference_log.txt
+mapping_stats.txt
