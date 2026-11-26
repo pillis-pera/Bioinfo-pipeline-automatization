@@ -39,7 +39,9 @@ for file in *.fastq*; do
 	echo "Sample: $base" >> "${ALIGNED_DIR}/mapping_logs/mapping_stats.txt"
 	#writes the name of the file (without extension) to a new line in the .txt file
 	
-	bowtie -q -S "${REFERENCE_DIR}/hsa_mature_index" "$file" > "${ALIGNED_DIR}/${base}.sam" 2>> "${ALIGNED_DIR}/mapping_logs/temporal_bowtie_output.txt"
+	bowtie -q -S "${REFERENCE_DIR}/hsa_mature_index" "$file" \
+		2>> "${ALIGNED_DIR}/mapping_logs/temporal_bowtie_output.txt" |
+		samtools sort -o "${ALIGNED_DIR}/${base}.sorted.bam" - 
 	# -q for .fastq files (change it to the corresponding option accordingly, check bowtie), this line writes the termianls output into a temporal .txt file for later grepping and creates a .sam file from the mapping
 	
 	result=$(grep '^#' "${ALIGNED_DIR}/mapping_logs/temporal_bowtie_output.txt")
@@ -57,19 +59,15 @@ for file in *.fastq*; do
 done
 
 cd $ALIGNED_DIR
-for file in *.sam; do
-	base="${file%.sam}"
-	#clears the temporal .txt where the bowtie output is being stored so the new file in the for loop can write on it from cero
-	samtools view -bS "$file" | samtools sort -o "${SORTED_DIR}/${base}.sorted.bam"
-	#takes the .bam that was just created with bowtie and creates its sorted.bam version
+for file in *.bam; do
+	base="${file%.sorted.bam}"
 	
-	samtools index "${SORTED_DIR}/${base}.sorted.bam"
+	samtools index "${ALIGNED_DIR}/${base}.sorted.bam"
 	#creates the sorted.bam.bai version of the .bam file so it can be manipulated with something like umitools
     # echo $base
     # echo $file
 done
 
-cd $SORTED_DIR
 for file in *.sorted.bam; do
 	base="${file%.sorted.bam}"
 	echo "Processing file: $file"
