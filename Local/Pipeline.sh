@@ -5,6 +5,7 @@ REPO_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 UNMERGED_DIR="${REPO_DIR}/Samples/unmerged"
 MERGED_DIR="${REPO_DIR}/Samples/merged"
 UMI_EXTRACTED_DIR="${REPO_DIR}/Local/r_umi_extracted"
+FASTP_DIR="${REPO_DIR}/Local/r_fastp"
 ALIGNED_DIR="${REPO_DIR}/Local/r_aligned"
 SORTED_DIR="${REPO_DIR}/Local/r_sorted"
 DEDUPED_DIR="${REPO_DIR}/Local/r_deduped"
@@ -24,7 +25,18 @@ for file in *.fastq*; do
 	base="${file%.*}"
 	echo "Processing file: $file"
     # echo $base
-	umi_tools extract --extract-method=regex --bc-pattern='.+(?P<discard_1>AACTGTAGGCACCATCAAT){s<=2}(?P<umi_1>.{12})(?P<discard_2>.*)$' -I "$file" -S "${UMI_EXTRACTED_DIR}/${base}.umi_extracted.fastq.gz"
+	umi_tools extract \
+		--extract-method=regex \
+		--bc-pattern='.+(?P<discard_1>AACTGTAGGCACCATCAAT){s<=2}(?P<umi_1>.{12})(?P<discard_2>.*)$' \
+		-I "$file" \
+		--log=/dev/null |
+		fastp \
+		--stdin  \
+		-l 17 \
+		-o "${UMI_EXTRACTED_DIR}/${base}.umi_extracted.fastq.gz" \
+		--html "${FASTP_DIR}/${base}.fastp.html" \
+		--json "${FASTP_DIR}/${base}.fastp.json"
+		
 	echo "Completed file: $file"
 	echo ""
 done
